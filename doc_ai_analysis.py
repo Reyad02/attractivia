@@ -135,12 +135,12 @@ async def extract_user_details(file_id: str):
     file_id: OpenAI uploaded file ID (from another API)
     """
     try:
-        prompt = """
-        You are an OCR data extraction assistant.
+        # prompt = """
+        # You are an OCR data extraction assistant.
 
-        Extract text from the provided document and return ONLY valid JSON.
-        No markdown, no explanations, no extra text, no summary.
-        """
+        # Extract text from the provided document and return ONLY valid JSON.
+        # No markdown, no explanations, no extra text, no summary.
+        # """
 
         response = client.responses.create(
             model="gpt-5.2",
@@ -154,7 +154,7 @@ async def extract_user_details(file_id: str):
                         },
                         {
                             "type": "input_text",
-                            "text": prompt
+                            "text": system_prompt
                         }
                     ]
                 }
