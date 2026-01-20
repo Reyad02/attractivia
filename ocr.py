@@ -47,7 +47,7 @@ def extract_json(text: str):
         return None
 
 @app.post("/extract_user_details")
-async def extract_user_details(file_id: str):
+async def extract_user_details(file_id: str, mime_type: str):
     """
     file_id: OpenAI uploaded file ID (from another API)
     """
@@ -58,6 +58,8 @@ async def extract_user_details(file_id: str):
         Extract text from the provided document and return ONLY valid JSON.
         No markdown, no explanations, no extra text, no summary.
         """
+        
+        file_type = "input_image" if mime_type.startswith("image/") else "input_file"
 
         response = client.responses.create(
             model="gpt-5.2",
@@ -66,7 +68,7 @@ async def extract_user_details(file_id: str):
                     "role": "user",
                     "content": [
                         {
-                            "type": "input_file",
+                            "type": file_type,
                             "file_id": file_id
                         },
                         {
@@ -94,7 +96,8 @@ async def extract_user_details(file_id: str):
         return {
             "response": {
                 "success": success,
-                "data": data
+                "data": data,
+                "mime_type": mime_type
             }
         }
 

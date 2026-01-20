@@ -10,10 +10,13 @@ app = FastAPI(title="GpsLaw.AI File Upload API")
 
 @app.post("/upload_file")
 async def upload_file(file: UploadFile = File(...)):
-    if file.content_type != "application/pdf":
+    # file should be pdf or image or document
+    
+    if file.content_type not in ["application/pdf", "image/png", "image/jpeg", "image/jpg", "application/msword",
+                             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type. Only PDF files are accepted."
+            detail="Unsupported file type. Only image, PDF, and document files are accepted."
         )
         
     try:
@@ -21,6 +24,7 @@ async def upload_file(file: UploadFile = File(...)):
             
         file_bytes = io.BytesIO(file_content)
         file_bytes.name = file.filename 
+        mime_type = file.content_type
         
         uploaded_file = client.files.create(
             file=file_bytes,
@@ -29,7 +33,8 @@ async def upload_file(file: UploadFile = File(...)):
         return {
             "filename": file.filename,
             "content_type": file.content_type,
-            "file_id": uploaded_file.id
+            "file_id": uploaded_file.id,
+            "mime_type": mime_type
         }
         
     except Exception as e:
