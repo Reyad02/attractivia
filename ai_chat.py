@@ -4,15 +4,12 @@ from time import time
 import uuid
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
 from dotenv import dotenv_values
 import anthropic
 
 env_vars = dotenv_values(".env")
 import re
 
-# client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
-# client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
 client = anthropic.Anthropic(api_key=env_vars.get("ANTROPIC_API_KEY"))
 
 app = FastAPI(title="GpsLaw.AI Chat API")
@@ -192,26 +189,12 @@ def chat(request: ChatRequest):
     conversation_text += f"User: {request.user_input}\nAI:"
 
     try:
-        # response = client.responses.create(
-        #     # model="gpt-5", -> question asked 4
-        #     model="gpt-5.1", 
-        #     # -> question asked 6
-        #     input=[
-        #         {"role": "system", "content": system_prompt(request.language)},
-        #         {"role": "user", "content": conversation_text}
-        #     ],
-        #     text={
-        #         "format": TEXT_FORMAT
-        #     }
-        # )
+        
         response = client.messages.create(
-            # model="gpt-5", -> question asked 4
             model="claude-sonnet-4-5", 
             max_tokens=4096,
-            # -> question asked 6
             system=system_prompt(request.language),
             messages=[
-                # {"role": "system", "content": system_prompt(request.language)},
                 {"role": "user", "content": conversation_text}
             ],
             output_config={

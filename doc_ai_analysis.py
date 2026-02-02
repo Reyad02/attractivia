@@ -1,12 +1,10 @@
 import anthropic
 from fastapi import FastAPI, HTTPException
-from openai import OpenAI
 from dotenv import dotenv_values
 import json
 import re
 
 env_vars = dotenv_values(".env")
-# client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
 client = anthropic.Anthropic(api_key=env_vars.get("ANTROPIC_API_KEY"))
 
 app = FastAPI(title="GpsLaw.AI DOC Analysis API")
@@ -137,14 +135,6 @@ async def extract_user_details(file_id: str, mime_type: str):
     file_id: OpenAI uploaded file ID (from another API)
     """
     try:
-        # prompt = """
-        # You are an OCR data extraction assistant.
-
-        # Extract text from the provided document and return ONLY valid JSON.
-        # No markdown, no explanations, no extra text, no summary.
-        # """
-        
-        # file_type = "input_image" if mime_type.startswith("image/") else "input_file"
         file_type = "image" if mime_type.startswith("image/") else "document"
 
         response = client.beta.messages.create(
@@ -174,51 +164,6 @@ async def extract_user_details(file_id: str, mime_type: str):
             ,
             betas=["files-api-2025-04-14"]
         )
-        
-        # response = client.responses.create(
-        #     model="gpt-5.2",
-        #     input=[
-        #         {
-        #             "role": "user",
-        #             "content": [
-        #                 {
-        #                     # "type": "input_file",
-        #                     "type": file_type,
-        #                     "file_id": file_id
-        #                 },
-        #                 {
-        #                     "type": "input_text",
-        #                     "text": system_prompt
-        #                 }
-        #             ]
-        #         }
-        #     ],
-        #     text={
-        #         "format": DOC_TEXT_FORMAT
-        #     }
-        # )
-        # response = client.responses.create(
-        #     model="gpt-5.2",
-        #     input=[
-        #         {
-        #             "role": "user",
-        #             "content": [
-        #                 {
-        #                     # "type": "input_file",
-        #                     "type": file_type,
-        #                     "file_id": file_id
-        #                 },
-        #                 {
-        #                     "type": "input_text",
-        #                     "text": system_prompt
-        #                 }
-        #             ]
-        #         }
-        #     ],
-        #     text={
-        #         "format": DOC_TEXT_FORMAT
-        #     }
-        # )
 
         ai_reply = response.content[0].text
         ai_reply = re.sub(r'^```json\s*', '', ai_reply)
