@@ -207,7 +207,7 @@ def chat(request: ChatRequest):
         response = client.messages.create(
             # model="gpt-5", -> question asked 4
             model="claude-sonnet-4-5", 
-            max_tokens=1024,
+            max_tokens=4096,
             # -> question asked 6
             system=system_prompt(request.language),
             messages=[

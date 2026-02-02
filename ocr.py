@@ -1,3 +1,4 @@
+import anthropic
 from fastapi import FastAPI, HTTPException
 from openai import OpenAI
 from dotenv import dotenv_values
@@ -5,13 +6,14 @@ import json
 import re
 
 env_vars = dotenv_values(".env")
-client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
+# client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
+client = anthropic.Anthropic(api_key=env_vars.get("ANTROPIC_API_KEY"))
 
 app = FastAPI(title="GpsLaw.AI OCR API")
 
 OCR_TEXT_FORMAT = {
     "type": "json_schema",
-    "name": "gpslaw_ocr_response",
+    # "name": "gpslaw_ocr_response",
     "schema": {
         "type": "object",
         "properties": {
@@ -30,7 +32,7 @@ OCR_TEXT_FORMAT = {
         ],
         "additionalProperties": False
     },
-    "strict": True
+    # "strict": True
 }
 
 def extract_json(text: str):
@@ -59,36 +61,67 @@ async def extract_user_details(file_id: str, mime_type: str):
         No markdown, no explanations, no extra text, no summary.
         """
         
-        file_type = "input_image" if mime_type.startswith("image/") else "input_file"
+        # file_type = "input_image" if mime_type.startswith("image/") else "input_file"
+        file_type = "image" if mime_type.startswith("image/") else "document"
 
-        response = client.responses.create(
-            model="gpt-5.2",
-            input=[
+        # response = client.responses.create(
+        #     model="gpt-5.2",
+        #     input=[
+        #         {
+        #             "role": "user",
+        #             "content": [
+        #                 {
+        #                     "type": file_type,
+        #                     "file_id": file_id
+        #                 },
+        #                 {
+        #                     "type": "input_text",
+        #                     "text": prompt
+        #                 }
+        #             ]
+        #         }
+        #     ],
+        #     text={
+        #         "format": OCR_TEXT_FORMAT
+        #     }
+        # )
+        response = client.beta.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=8192,
+            messages=[
                 {
                     "role": "user",
                     "content": [
                         {
-                            "type": file_type,
-                            "file_id": file_id
+                            "type": "text",
+                            "text": prompt
                         },
                         {
-                            "type": "input_text",
-                            "text": prompt
+                            # "type": file_type,
+                            # "file_id": file_id,
+                            "type": file_type,
+                            "source": {
+                                "type": "file",
+                                "file_id": file_id
+                            }
                         }
                     ]
                 }
             ],
-            text={
+            output_config={
                 "format": OCR_TEXT_FORMAT
             }
+            ,
+            betas=["files-api-2025-04-14"]
         )
 
-        ai_reply = response.output_text
+        ai_reply = response.content[0].text
         ai_reply = re.sub(r'^```json\s*', '', ai_reply)
         ai_reply = re.sub(r'^```\s*', '', ai_reply)
         ai_reply = re.sub(r'\s*```$', '', ai_reply)
         ai_reply = ai_reply.strip()
-        
+        # print(ai_reply)
+
         response_json = json.loads(ai_reply)
         data = response_json.get("data", "")
         success = response_json.get("success", {})
