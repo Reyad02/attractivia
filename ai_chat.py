@@ -6,11 +6,14 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import dotenv_values
+import anthropic
 
 env_vars = dotenv_values(".env")
 import re
 
-client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
+# client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
+# client = OpenAI(api_key=env_vars.get("OPENAI_API_KEY"))
+client = anthropic.Anthropic(api_key=env_vars.get("ANTROPIC_API_KEY"))
 
 app = FastAPI(title="GpsLaw.AI Chat API")
 
@@ -97,7 +100,6 @@ You should response based on the user selected language {language}.
 
 TEXT_FORMAT = {
     "type": "json_schema",
-    "name": "gpslaw_response",
     "schema": {
         "type": "object",
         "properties": {
@@ -167,8 +169,8 @@ TEXT_FORMAT = {
             "legal_guidance_generation"
         ],
         "additionalProperties": False
-    },
-    "strict": True
+    }
+    # "strict": True
 }
 
 class ChatRequest(BaseModel):
@@ -190,24 +192,38 @@ def chat(request: ChatRequest):
     conversation_text += f"User: {request.user_input}\nAI:"
 
     try:
-        response = client.responses.create(
+        # response = client.responses.create(
+        #     # model="gpt-5", -> question asked 4
+        #     model="gpt-5.1", 
+        #     # -> question asked 6
+        #     input=[
+        #         {"role": "system", "content": system_prompt(request.language)},
+        #         {"role": "user", "content": conversation_text}
+        #     ],
+        #     text={
+        #         "format": TEXT_FORMAT
+        #     }
+        # )
+        response = client.messages.create(
             # model="gpt-5", -> question asked 4
-            model="gpt-5.1", 
+            model="claude-sonnet-4-5", 
+            max_tokens=1024,
             # -> question asked 6
-            input=[
-                {"role": "system", "content": system_prompt(request.language)},
+            system=system_prompt(request.language),
+            messages=[
+                # {"role": "system", "content": system_prompt(request.language)},
                 {"role": "user", "content": conversation_text}
             ],
-            text={
+            output_config={
                 "format": TEXT_FORMAT
             }
         )
 
         end_time = time()
         print(f"Response time: {end_time - start_time:.2f} seconds")
-        print(response.output_text)
+        print(response.content[0].text)
 
-        ai_reply = response.output_text
+        ai_reply = response.content[0].text
 
         # Remove markdown code blocks if present
         ai_reply = re.sub(r'^```json\s*', '', ai_reply)
