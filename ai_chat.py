@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import dotenv_values
 import anthropic
+import random
 
 env_vars = dotenv_values(".env")
 import re
@@ -40,9 +41,24 @@ def get_or_create_session(sessions, session_id=None):
     sessions[new_id] = []
     return new_id
 
-def system_prompt(language: str) -> str:
+def get_random_response(user_name: str) -> str:
+    responses = [
+        f"Hello {user_name}! How can I assist you with your legal issue today?",
+        f"Hi there {user_name}! What legal question do you have for me?",
+        f"Greetings {user_name}! Please describe your legal situation and I'll do my best to help.",
+        f"Hello {user_name}! I'm here to provide legal guidance. What can I assist you with?"
+    ]
+    
+    return random.choice(responses)
+
+def system_prompt(language: str, user_name: str, greeting_response:str | None = None) -> str:
     return f"""
 You are GpsLaw.AI — a legal guidance engine that behaves like a “GPS of the Law”.
+
+If user give you greetings respond exactly {greeting_response} 
+
+If user want to know yourself or asked unrelated question, respond with user name {user_name} a short description about yourself.
+
 Your goal is to follow a strict sequence: LOCATE -> DIAGNOSE -> GUIDE -> ANTICIPATE.
 
 ### OPERATIONAL RULES:
@@ -52,7 +68,8 @@ Your goal is to follow a strict sequence: LOCATE -> DIAGNOSE -> GUIDE -> ANTICIP
    - Phase 2 (Diagnose): Ask 4-8 discriminating questions about the case (e.g., dates, contract types).
    - Phase 3 (Guide/Anticipate): Only provide the full structured guidance once Phase 1 and 2 are complete.
 3. OUTPUT FORMAT: You must ALWAYS respond in valid JSON.
-4. GUIDANCE LOCK: If you are still asking questions (Phase 1 or 2), the "legal_guidance" all object MUST be empty.
+4. Before genrating legal guidance, you MUST ask 'Based on what you have shared, I can now give you comprehensive legal guidance. Would you like me to proceed?' something like that to confirm with user before giving legal guidance. If user says no, you should ask 'Is there any other information you would like to share or clarify?' and go back to Phase 2.
+5. GUIDANCE LOCK: If you are still asking questions (Phase 1 or 2), the "legal_guidance" all object MUST be empty.
 
 ### RESPONSE JSON STRUCTURE:
 {{
@@ -174,6 +191,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     user_input: str
     language: str | None = "english"
+    user_name: str 
 
 
 @app.post("/chat")
@@ -182,6 +200,11 @@ def chat(request: ChatRequest):
     sessions = load_sessions()
 
     session_id = get_or_create_session(sessions, request.session_id)
+    
+    if not request.session_id:
+        gretting_response = get_random_response(request.user_name)
+        
+    print(f"Greeting response: {gretting_response if not request.session_id else 'N/A'}")
 
     conversation_text = ""
     for m in sessions[session_id]:
@@ -192,14 +215,15 @@ def chat(request: ChatRequest):
         
         response = client.messages.create(
             model="claude-sonnet-4-5", 
-            max_tokens=4096,
-            system=system_prompt(request.language),
+            max_tokens=8192,
+            system=system_prompt(request.language, request.user_name, gretting_response if not request.session_id else None),
             messages=[
                 {"role": "user", "content": conversation_text}
             ],
             output_config={
                 "format": TEXT_FORMAT
-            }
+            },
+            tools=[{"type": "web_search_20260209", "name": "web_search"}]
         )
 
         end_time = time()
